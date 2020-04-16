@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import collections
 import itertools
 import logging
-from typing import Optional
 
 from kafka.vendor import six
 

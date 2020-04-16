@@ -3,9 +3,10 @@ from __future__ import absolute_import
 import collections
 import logging
 
+from kafka.vendor import six
+
 from kafka.coordinator.assignors.abstract import AbstractPartitionAssignor
 from kafka.coordinator.protocol import ConsumerProtocolMemberMetadata, ConsumerProtocolMemberAssignment
-from kafka.vendor import six
 
 log = logging.getLogger(__name__)
 
