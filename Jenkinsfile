@@ -45,27 +45,27 @@ node('jenkins-neokami-slave', {
                 """
             }
 
-//             stage('Distribute Wheel') {
-//                 // if not master, then substitute version with version-branch-build tag
-//                 if (env.BRANCH_NAME != "master") {
-//                     sh """
-//                         sed -i 's/_VERSION = "\\(.*\\)"/_VERSION = "\\1-${env.BRANCH_NAME}--build-${env.BUILD_NUMBER}"/g' setup.py
-//                     """
-//                 }
-//
-//                 sh """
-//                     . .env/bin/activate
-//                     python setup.py bdist_wheel
-//                 """
-//
-//                 archiveArtifacts artifacts: 'dist/*'
-//
-//                 sh """
-//                     . .env/bin/activate
-//                     pip install twine
-//                     twine upload --repository pypicloud --skip-existing dist/*
-//                 """
-//             }
+            stage('Distribute Wheel') {
+                // if not master, then substitute version with version-branch-build tag
+                if (env.BRANCH_NAME != "master") {
+                    sh """
+                        sed -i 's/__version__ = "\\(.*\\)"/__version__ = "\\1-${env.BRANCH_NAME}--build-${env.BUILD_NUMBER}"/g' kafka/version.py
+                    """
+                }
+
+                sh """
+                    . .env/bin/activate
+                    python setup.py bdist_wheel
+                """
+
+                archiveArtifacts artifacts: 'dist/*'
+
+                sh """
+                    . .env/bin/activate
+                    pip install twine
+                    twine upload --repository pypicloud --skip-existing dist/*
+                """
+            }
 
         }
     }
