@@ -34,7 +34,7 @@ node('jenkins-neokami-slave', {
 
             stage('Install') {
                 sh """
-                    ./.env/bin/pip install .[dev]
+                    ./.env/bin/pip install .[test]
                 """
             }
 

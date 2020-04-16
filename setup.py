@@ -64,7 +64,7 @@ setup(
         "sortedcontainers==2.1.0"
     ],
     extras_require={
-        "dev": [
+        "test": [
             "pytest==3.10.0",
             "pytest-cov==2.6.0",
             "lz4==2.1.2",
