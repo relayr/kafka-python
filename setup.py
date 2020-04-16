@@ -7,6 +7,7 @@ from setuptools import setup, Command, find_packages
 # since we can't import something we haven't built yet :)
 exec(open('kafka/version.py').read())
 
+
 class Tox(Command):
 
     user_options = []
@@ -58,5 +59,20 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Software Development :: Libraries :: Python Modules",
-    ]
+    ],
+    install_requires=[
+        "sortedcontainers==2.1.0"
+    ],
+    extras_require={
+        "dev": [
+            "pytest==3.10.0",
+            "pytest-cov==2.6.0",
+            "lz4==2.1.2",
+            "xxhash==1.3.0",
+            "python-snappy==0.5.3",
+            "mock==3.0.5",
+            "pytest-mock==1.10.0",
+            "crc32c==1.7",
+        ]
+    }
 )

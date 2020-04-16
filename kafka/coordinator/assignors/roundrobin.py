@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import collections
 import itertools
 import logging
+from typing import Optional
 
 from kafka.vendor import six
 
@@ -92,5 +93,5 @@ class RoundRobinPartitionAssignor(AbstractPartitionAssignor):
         return ConsumerProtocolMemberMetadata(cls.version, list(topics), b'')
 
     @classmethod
-    def on_assignment(cls, assignment):
+    def on_assignment(cls, assignment, generation):
         pass
