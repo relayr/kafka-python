@@ -31,7 +31,7 @@ def is_sublist(source: List, target: Tuple) -> bool:
       true if target is in source; false otherwise
     """
     for index in (i for i, e in enumerate(source) if e == target[0]):
-        if source[index : index + len(target)] == target:
+        if source[index: index + len(target)] == target:
             return True
     return False
 
@@ -49,30 +49,19 @@ class PartitionMovements:
         )
         self.partition_movements: Dict[TopicPartition, ConsumerPair] = {}
 
-    def remove_movement_record_of_partition(self, partition: TopicPartition) -> ConsumerPair:
-        pair = self.partition_movements[partition]
-        del self.partition_movements[partition]
-        self.partition_movements_by_topic[partition.topic][pair].remove(partition)
-
-        return pair
-
-    def add_partition_movement_record(self, partition: TopicPartition, pair: ConsumerPair):
-        self.partition_movements[partition] = pair
-        self.partition_movements_by_topic[partition.topic][pair].add(partition)
-
     def move_partition(self, partition: TopicPartition, old_consumer: str, new_consumer: str):
         pair = ConsumerPair(src_member_id=old_consumer, dst_member_id=new_consumer)
         if partition in self.partition_movements:
             # this partition has previously moved
-            existing_pair = self.remove_movement_record_of_partition(partition)
+            existing_pair = self._remove_movement_record_of_partition(partition)
             assert existing_pair.dst_member_id == old_consumer
             if existing_pair.src_member_id != new_consumer:
                 # the partition is not moving back to its previous consumer
-                self.add_partition_movement_record(
+                self._add_partition_movement_record(
                     partition, ConsumerPair(src_member_id=existing_pair.src_member_id, dst_member_id=new_consumer)
                 )
         else:
-            self.add_partition_movement_record(partition, pair)
+            self._add_partition_movement_record(partition, pair)
 
     def get_partition_to_be_moved(self, partition: TopicPartition, old_consumer: str, new_consumer: str):
         if partition.topic not in self.partition_movements_by_topic:
@@ -87,10 +76,10 @@ class PartitionMovements:
 
         return self.partition_movements_by_topic[partition.topic][reverse_pair].pop()
 
-    def is_sticky(self) -> bool:
+    def are_sticky(self) -> bool:
         for topic, movements in self.partition_movements_by_topic.items():
             movement_pairs = set(movements.keys())
-            if self.has_cycles(movement_pairs):
+            if self._has_cycles(movement_pairs):
                 log.error(
                     f"Stickiness is violated for topic {topic}\n"
                     f"Partition movements for this topic occurred among the following consumer pairs:\n"
@@ -99,13 +88,24 @@ class PartitionMovements:
                 return False
         return True
 
-    def has_cycles(self, consumer_pairs: Set[ConsumerPair]):
+    def _remove_movement_record_of_partition(self, partition: TopicPartition) -> ConsumerPair:
+        pair = self.partition_movements[partition]
+        del self.partition_movements[partition]
+        self.partition_movements_by_topic[partition.topic][pair].remove(partition)
+
+        return pair
+
+    def _add_partition_movement_record(self, partition: TopicPartition, pair: ConsumerPair):
+        self.partition_movements[partition] = pair
+        self.partition_movements_by_topic[partition.topic][pair].add(partition)
+
+    def _has_cycles(self, consumer_pairs: Set[ConsumerPair]):
         cycles = set()
         for pair in consumer_pairs:
             reduced_pairs = deepcopy(consumer_pairs)
             reduced_pairs.remove(pair)
             path = [pair.src_member_id]
-            if self.is_linked(pair.dst_member_id, pair.src_member_id, reduced_pairs, path) and self.is_subcycle(
+            if self._is_linked(pair.dst_member_id, pair.src_member_id, reduced_pairs, path) and not self._is_subcycle(
                 path, cycles
             ):
                 cycles.add(tuple(path))
@@ -119,7 +119,8 @@ class PartitionMovements:
                 return True
         return False
 
-    def is_subcycle(self, cycle: List[str], cycles: Set[Tuple[str]]) -> bool:
+    @staticmethod
+    def _is_subcycle(cycle: List[str], cycles: Set[Tuple[str]]) -> bool:
         super_cycle = deepcopy(cycle)
         super_cycle = super_cycle[:-1]
         super_cycle.extend(cycle)
@@ -128,17 +129,19 @@ class PartitionMovements:
                 return True
         return False
 
-    def is_linked(self, src: str, dst: str, pairs: Set[ConsumerPair], current_path: List[str]):
+    def _is_linked(self, src: str, dst: str, pairs: Set[ConsumerPair], current_path: List[str]):
         if src == dst:
             return False
         if not pairs:
             return False
         if ConsumerPair(src, dst) in pairs:
+            current_path.append(src)
+            current_path.append(dst)
             return True
         for pair in pairs:
             if pair.src_member_id == src:
                 reduced_set = deepcopy(pairs)
                 reduced_set.remove(pair)
                 current_path.append(pair.src_member_id)
-                return self.is_linked(pair.dst_member_id, dst, reduced_set, current_path)
+                return self._is_linked(pair.dst_member_id, dst, reduced_set, current_path)
         return False

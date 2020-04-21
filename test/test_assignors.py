@@ -417,7 +417,7 @@ def test_sticky_reassignment_after_one_consumer_leaves(mocker):
 
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_sticky_reassignment_after_one_consumer_added(mocker):
@@ -440,7 +440,7 @@ def test_sticky_reassignment_after_one_consumer_added(mocker):
         )
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_sticky_same_subscriptions(mocker):
@@ -465,7 +465,7 @@ def test_sticky_same_subscriptions(mocker):
         member_metadata[member] = build_metadata(topics, assignment[member].partitions())
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_sticky_large_assignment_with_multiple_consumers_leaving(mocker):
@@ -498,7 +498,7 @@ def test_sticky_large_assignment_with_multiple_consumers_leaving(mocker):
 
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_new_subscription(mocker):
@@ -521,7 +521,7 @@ def test_new_subscription(mocker):
 
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_move_existing_assignments(mocker):
@@ -574,7 +574,7 @@ def test_stickiness(mocker):
 
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
     for consumer, consumer_assignment in assignment.items():
         assert (
@@ -684,7 +684,7 @@ def test_reassignment_with_random_subscriptions_and_changes(mocker, execution_nu
 
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance(subscriptions, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_assignment_with_multiple_generations1(mocker):
@@ -713,7 +713,7 @@ def test_assignment_with_multiple_generations1(mocker):
     assert len(assignment2['C2'].assignment[0][1]) == 3
     assert all([partition in assignment2['C1'].assignment[0][1] for partition in assignment1['C1'].assignment[0][1]])
     assert all([partition in assignment2['C2'].assignment[0][1] for partition in assignment1['C2'].assignment[0][1]])
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
     member_metadata = {
         'C2': build_metadata({'t'}, assignment2['C2'].partitions(), 2),
@@ -724,7 +724,7 @@ def test_assignment_with_multiple_generations1(mocker):
     verify_validity_and_balance({'C2': {'t'}, 'C3': {'t'}}, assignment3)
     assert len(assignment3['C2'].assignment[0][1]) == 3
     assert len(assignment3['C3'].assignment[0][1]) == 3
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def test_assignment_with_multiple_generations2(mocker):
@@ -750,7 +750,7 @@ def test_assignment_with_multiple_generations2(mocker):
     verify_validity_and_balance({'C2': {'t'}}, assignment2)
     assert len(assignment2['C2'].assignment[0][1]) == 6
     assert all([partition in assignment2['C2'].assignment[0][1] for partition in assignment1['C2'].assignment[0][1]])
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
     member_metadata = {
         'C1': build_metadata({'t'}, assignment1['C1'].partitions(), 1),
@@ -760,7 +760,7 @@ def test_assignment_with_multiple_generations2(mocker):
 
     assignment3 = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance({'C1': {'t'}, 'C2': {'t'}, 'C3': {'t'}}, assignment3)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
     assert set(assignment3['C1'].assignment[0][1]) == set(assignment1['C1'].assignment[0][1])
     assert set(assignment3['C2'].assignment[0][1]) == set(assignment1['C2'].assignment[0][1])
     assert set(assignment3['C3'].assignment[0][1]) == set(assignment1['C3'].assignment[0][1])
@@ -786,7 +786,7 @@ def test_assignment_with_conflicting_previous_generations(mocker, execution_numb
 
     assignment = StickyPartitionAssignor.assign(cluster, member_metadata)
     verify_validity_and_balance({'C1': {'t'}, 'C2': {'t'}, 'C3': {'t'}}, assignment)
-    assert StickyPartitionAssignor._latest_partition_movements.is_sticky()
+    assert StickyPartitionAssignor._latest_partition_movements.are_sticky()
 
 
 def make_member_metadata(subscriptions: Dict[str, Set[str]]):
