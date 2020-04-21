@@ -23,9 +23,13 @@ class ConsumerGenerationPair(NamedTuple):
 
 
 def has_identical_list_elements(list_: List[List]) -> bool:
-    """
-    :param list_: collection of lists
-    :return: true if all lists in the collection have the same members; false otherwise
+    """Checks if all lists in the collection have the same members
+
+    Arguments:
+      list_: collection of lists
+
+    Returns:
+      true if all lists in the collection have the same members; false otherwise
     """
     if not list_:
         return True
@@ -233,8 +237,9 @@ class StickyAssignmentExecutor:
 
     def _are_subscriptions_identical(self) -> bool:
         """
-        :return: true if potential consumers of partitions are the same, and potential partitions consumers can
-        consume from are the same too
+        Returns:
+            true if potential consumers of partitions are the same, and potential partitions consumers can
+            consume from are the same too
         """
         if not has_identical_list_elements(list(self.partition2all_potential_consumers.values())):
             return False
@@ -349,9 +354,7 @@ class StickyAssignmentExecutor:
         self.sorted_current_subscriptions.add((consumer, tuple(self.current_assignment[consumer])))
 
     def _is_balanced(self) -> bool:
-        """
-        Determines if the current assignment is a balanced one
-        """
+        """Determines if the current assignment is a balanced one"""
         if (
             len(self.current_assignment[self._get_consumer_with_least_subscriptions()])
             >= len(self.current_assignment[self._get_consumer_with_most_subscriptions()]) - 1
@@ -487,11 +490,16 @@ class StickyAssignmentExecutor:
 
     @staticmethod
     def _get_balance_score(assignment: Dict[str, List[TopicPartition]]) -> int:
-        """
-        :return: the balance score of the given assignment,
+        """Calculates a balance score of a give assignment
         as the sum of assigned partitions size difference of all consumer pairs.
         A perfectly balanced assignment (with all consumers getting the same number of partitions)
         has a balance score of 0. Lower balance score indicates a more balanced assignment.
+
+        Arguments:
+          assignment (dict): {consumer: list of assigned topic partitions}
+
+        Returns:
+          the balance score of the assignment
         """
         score = 0
         consumer2assignment: Dict[str, int] = {}
@@ -510,43 +518,43 @@ class StickyAssignmentExecutor:
 class StickyPartitionAssignor(AbstractPartitionAssignor):
     """
     https://cwiki.apache.org/confluence/display/KAFKA/KIP-54+-+Sticky+Partition+Assignment+Strategy
-
+    
     The sticky assignor serves two purposes. First, it guarantees an assignment that is as balanced as possible, meaning either:
     - the numbers of topic partitions assigned to consumers differ by at most one; or
     - each consumer that has 2+ fewer topic partitions than some other consumer cannot get any of those topic partitions transferred to it.
-
+    
     Second, it preserved as many existing assignment as possible when a reassignment occurs.
     This helps in saving some of the overhead processing when topic partitions move from one consumer to another.
-
+    
     Starting fresh it would work by distributing the partitions over consumers as evenly as possible.
     Even though this may sound similar to how round robin assignor works, the second example below shows that it is not.
     During a reassignment it would perform the reassignment in such a way that in the new assignment
     - topic partitions are still distributed as evenly as possible, and
     - topic partitions stay with their previously assigned consumers as much as possible.
-
+    
     The first goal above takes precedence over the second one.
-
+    
     Example 1.
     Suppose there are three consumers C0, C1, C2,
     four topics t0, t1, t2, t3, and each topic has 2 partitions,
     resulting in partitions t0p0, t0p1, t1p0, t1p1, t2p0, t2p1, t3p0, t3p1.
     Each consumer is subscribed to all three topics.
-
+    
     The assignment with both sticky and round robin assignors will be:
     - C0: [t0p0, t1p1, t3p0]
     - C1: [t0p1, t2p0, t3p1]
     - C2: [t1p0, t2p1]
-
+    
     Now, let's assume C1 is removed and a reassignment is about to happen. The round robin assignor would produce:
     - C0: [t0p0, t1p0, t2p0, t3p0]
     - C2: [t0p1, t1p1, t2p1, t3p1]
-
+    
     while the sticky assignor would result in:
     - C0 [t0p0, t1p1, t3p0, t2p0]
     - C2 [t1p0, t2p1, t0p1, t3p1]
     preserving all the previous assignments (unlike the round robin assignor).
-
-
+    
+    
     Example 2.
     There are three consumers C0, C1, C2,
     and three topics t0, t1, t2, with 1, 2, and 3 partitions respectively.
@@ -554,22 +562,22 @@ class StickyPartitionAssignor(AbstractPartitionAssignor):
     C0 is subscribed to t0;
     C1 is subscribed to t0, t1;
     and C2 is subscribed to t0, t1, t2.
-
+    
     The round robin assignor would come up with the following assignment:
     - C0 [t0p0]
     - C1 [t1p0]
     - C2 [t1p1, t2p0, t2p1, t2p2]
-
+    
     which is not as balanced as the assignment suggested by sticky assignor:
     - C0 [t0p0]
     - C1 [t1p0, t1p1]
     - C2 [t2p0, t2p1, t2p2]
-
+    
     Now, if consumer C0 is removed, these two assignors would produce the following assignments.
     Round Robin (preserves 3 partition assignments):
     - C1 [t0p0, t1p1]
     - C2 [t1p0, t2p0, t2p1, t2p2]
-
+    
     Sticky (preserves 5 partition assignments):
     - C1 [t1p0, t1p1, t0p0]
     - C2 [t2p0, t2p1, t2p2]
@@ -587,16 +595,14 @@ class StickyPartitionAssignor(AbstractPartitionAssignor):
 
     @classmethod
     def assign(cls, cluster: ClusterMetadata, members: dict):
-        """
-        Perform group assignment given cluster metadata and member subscriptions
+        """Performs group assignment given cluster metadata and member subscriptions
 
         Arguments:
-            cluster (ClusterMetadata): metadata for use in assignment
-            members (dict of {member_id: MemberMetadata}): decoded metadata for
-                each member in the group.
+            cluster (ClusterMetadata): cluster metadata
+            members (dict of {member_id: MemberMetadata}): decoded metadata for each member in the group.
 
         Returns:
-            dict: {member_id: MemberAssignment}
+          dict: {member_id: MemberAssignment}
         """
         members_metadata: Dict[str, StickyAssignorMemberMetadataV1] = {}
         for consumer, member_metadata in members.items():
@@ -618,7 +624,11 @@ class StickyPartitionAssignor(AbstractPartitionAssignor):
     @classmethod
     def parse_member_metadata(cls, metadata) -> StickyAssignorMemberMetadataV1:
         """
-        metadata (MemberMetadata): decoded metadata for a member of the group.
+        Arguments:
+          metadata (MemberMetadata): decoded metadata for a member of the group.
+
+        Returns:
+          parsed metadata (StickyAssignorMemberMetadataV1)
         """
         user_data = metadata.user_data
         if not user_data:
@@ -658,10 +668,11 @@ class StickyPartitionAssignor(AbstractPartitionAssignor):
 
     @classmethod
     def on_assignment(cls, assignment, generation: int):
-        """
-        Callback that runs on each assignment. Updates assignor's state.
-        :param generation: generation id (if present)
-        :param assignment: MemberAssignment
+        """Callback that runs on each assignment. Updates assignor's state.
+
+        Arguments:
+          assignment: MemberAssignment
+          generation: generation id (if present)
         """
         log.debug(f"On assignment: assignment={assignment}, generation={generation}")
         cls.member_assignment: List[TopicPartition] = assignment.partitions()
