@@ -33,12 +33,9 @@ def has_identical_list_elements(list_: List[List]) -> bool:
     """
     if not list_:
         return True
-    prev_element = list_[0]
     for i in range(1, len(list_)):
-        element = list_[i]
-        if element != prev_element:
+        if list_[i] != list_[i - 1]:
             return False
-        prev_element = element
     return True
 
 
