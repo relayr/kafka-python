@@ -83,10 +83,9 @@ class StickyAssignmentExecutor:
         # a flag indicating that there were no previous assignments performed ever
         self.is_fresh_assignment = False
         # a mapping of all topic partitions to all consumers that can be assigned to them
-        self.partition2all_potential_consumers: Dict[TopicPartition, List[str]] = {}
+        self.partition_to_all_potential_consumers: Dict[TopicPartition, List[str]] = {}
         # a mapping of all consumers to all potential topic partitions that can be assigned to them
-        self.consumer2all_potential_partitions: Dict[str, List[TopicPartition]] = {}
-
+        self.consumer_to_all_potential_partitions: Dict[str, List[TopicPartition]] = {}
         # an ascending sorted set of consumers based on how many topic partitions are already assigned to them
         self.sorted_current_subscriptions: Set[Tuple[str, Tuple[TopicPartition]]] = set()
         # an ascending sorted list of topic partitions based on how many consumers can potentially use them
@@ -98,7 +97,7 @@ class StickyAssignmentExecutor:
         self.revocation_required = False
 
         self.partition_movements = PartitionMovements()
-        self._init(cluster)
+        self._initialize(cluster)
 
     def perform_initial_assignment(self):
         self._populate_sorted_partitions()
@@ -111,13 +110,13 @@ class StickyAssignmentExecutor:
         # assign all unassigned partitions
         for partition in self.unassigned_partitions:
             # skip if there is no potential consumer for the partition
-            if not self.partition2all_potential_consumers[partition]:
+            if not self.partition_to_all_potential_consumers[partition]:
                 continue
             self._assign_partition(partition)
 
         # narrow down the reassignment scope to only those partitions that can actually be reassigned
         fixed_partitions: Set[TopicPartition] = set()
-        for partition in self.partition2all_potential_consumers.keys():
+        for partition in self.partition_to_all_potential_consumers.keys():
             if not self._can_partition_participate_in_reassignment(partition):
                 fixed_partitions.add(partition)
         for fixed_partition in fixed_partitions:
@@ -126,7 +125,7 @@ class StickyAssignmentExecutor:
 
         # narrow down the reassignment scope to only those consumers that are subject to reassignment
         fixed_assignments: Dict[str, List[TopicPartition]] = {}
-        for consumer in self.consumer2all_potential_partitions.keys():
+        for consumer in self.consumer_to_all_potential_partitions.keys():
             if not self._can_consumer_participate_in_reassignment(consumer):
                 self._remove_consumer_from_current_subscriptions_and_maintain_order(consumer)
                 fixed_assignments[consumer] = self.current_assignment[consumer]
@@ -166,7 +165,7 @@ class StickyAssignmentExecutor:
         # noinspection PyTypeChecker
         return list(assignment.items())
 
-    def _init(self, cluster: ClusterMetadata):
+    def _initialize(self, cluster: ClusterMetadata):
         self._init_current_assignments(self.members)
 
         for topic in cluster.topics():
@@ -176,17 +175,17 @@ class StickyAssignmentExecutor:
                 continue
             for p in partitions:
                 partition = TopicPartition(topic=topic, partition=p)
-                self.partition2all_potential_consumers[partition] = []
+                self.partition_to_all_potential_consumers[partition] = []
         for consumer_id, member_metadata in self.members.items():
-            self.consumer2all_potential_partitions[consumer_id] = []
+            self.consumer_to_all_potential_partitions[consumer_id] = []
             for topic in member_metadata.subscription:
                 if cluster.partitions_for_topic(topic) is None:
                     log.warning(f"No partition metadata for topic {topic}")
                     continue
                 for p in cluster.partitions_for_topic(topic):
                     partition = TopicPartition(topic=topic, partition=p)
-                    self.consumer2all_potential_partitions[consumer_id].append(partition)
-                    self.partition2all_potential_consumers[partition].append(consumer_id)
+                    self.consumer_to_all_potential_partitions[consumer_id].append(partition)
+                    self.partition_to_all_potential_consumers[partition].append(consumer_id)
             if consumer_id not in self.current_assignment:
                 self.current_assignment[consumer_id] = []
 
@@ -235,17 +234,17 @@ class StickyAssignmentExecutor:
     def _are_subscriptions_identical(self) -> bool:
         """
         Returns:
-            true if potential consumers of partitions are the same, and potential partitions consumers can
-            consume from are the same too
+            true, if both potential consumers of partitions and potential partitions that consumers can
+            consume are the same
         """
-        if not has_identical_list_elements(list(self.partition2all_potential_consumers.values())):
+        if not has_identical_list_elements(list(self.partition_to_all_potential_consumers.values())):
             return False
-        return has_identical_list_elements(list(self.consumer2all_potential_partitions.values()))
+        return has_identical_list_elements(list(self.consumer_to_all_potential_partitions.values()))
 
     def _populate_sorted_partitions(self):
         # an ascending sorted set of topic partitions based on how many consumers can potentially use them
         sorted_all_partitions: SortedSet[Tuple[TopicPartition, List[str]]] = SortedSet(
-            iterable=[(tp, tuple(consumers)) for tp, consumers in self.partition2all_potential_consumers.items()],
+            iterable=[(tp, tuple(consumers)) for tp, consumers in self.partition_to_all_potential_consumers.items()],
             key=partitions_comparator_key,
         )
 
@@ -258,7 +257,7 @@ class StickyAssignmentExecutor:
             for consumer_id, partitions in assignments.items():
                 to_remove = []
                 for partition in partitions:
-                    if partition not in self.partition2all_potential_consumers:
+                    if partition not in self.partition_to_all_potential_consumers:
                         to_remove.append(partition)
                 for partition in to_remove:
                     partitions.remove(partition)
@@ -312,7 +311,7 @@ class StickyAssignmentExecutor:
                 # otherwise (the consumer still exists)
                 partitions_to_remove = []
                 for partition in partitions:
-                    if partition not in self.partition2all_potential_consumers:
+                    if partition not in self.partition_to_all_potential_consumers:
                         # if this topic partition of this consumer no longer exists
                         # remove it from current_assignment of the consumer
                         partitions_to_remove.append(partition)
@@ -373,11 +372,11 @@ class StickyAssignmentExecutor:
         for consumer, _ in self.sorted_current_subscriptions:
             consumer_partition_count = len(self.current_assignment[consumer])
             # skip if this consumer already has all the topic partitions it can get
-            if consumer_partition_count == len(self.consumer2all_potential_partitions[consumer]):
+            if consumer_partition_count == len(self.consumer_to_all_potential_partitions[consumer]):
                 continue
 
             # otherwise make sure it cannot get any more
-            for partition in self.consumer2all_potential_partitions[consumer]:
+            for partition in self.consumer_to_all_potential_partitions[consumer]:
                 if partition not in self.current_assignment[consumer]:
                     other_consumer = all_assigned_partitions[partition]
                     other_consumer_partition_count = len(self.current_assignment[other_consumer])
@@ -387,7 +386,7 @@ class StickyAssignmentExecutor:
 
     def _assign_partition(self, partition: TopicPartition):
         for consumer, _ in self.sorted_current_subscriptions:
-            if partition in self.consumer2all_potential_partitions[consumer]:
+            if partition in self.consumer_to_all_potential_partitions[consumer]:
                 self._remove_consumer_from_current_subscriptions_and_maintain_order(consumer)
                 self.current_assignment[consumer].append(partition)
                 self.current_partition_consumer[partition] = consumer
@@ -395,12 +394,12 @@ class StickyAssignmentExecutor:
                 break
 
     def _can_partition_participate_in_reassignment(self, partition: TopicPartition) -> bool:
-        return len(self.partition2all_potential_consumers[partition]) >= 2
+        return len(self.partition_to_all_potential_consumers[partition]) >= 2
 
     def _can_consumer_participate_in_reassignment(self, consumer: str) -> bool:
         current_partitions = self.current_assignment[consumer]
         current_assignment_size = len(current_partitions)
-        max_assignment_size = len(self.consumer2all_potential_partitions[consumer])
+        max_assignment_size = len(self.consumer_to_all_potential_partitions[consumer])
         if current_assignment_size > max_assignment_size:
             log.error(f"The consumer {consumer} is assigned more partitions than the maximum possible.")
         if current_assignment_size < max_assignment_size:
@@ -424,8 +423,8 @@ class StickyAssignmentExecutor:
             for partition in reassignable_partitions:
                 if self._is_balanced():
                     break
-                # the partition must have at least two consumers
-                if len(self.partition2all_potential_consumers[partition]) <= 1:
+                # the partition must have at least two potential consumers
+                if len(self.partition_to_all_potential_consumers[partition]) <= 1:
                     log.error(f"Expected more than one potential consumer for partition {partition}")
                 # the partition must have a current consumer
                 consumer = self.current_partition_consumer.get(partition)
@@ -445,7 +444,7 @@ class StickyAssignmentExecutor:
                     continue
 
                 # check if a better-suited consumer exist for the partition; if so, reassign it
-                for other_consumer in self.partition2all_potential_consumers[partition]:
+                for other_consumer in self.partition_to_all_potential_consumers[partition]:
                     if len(self.current_assignment[consumer]) > len(self.current_assignment[other_consumer]) + 1:
                         self._reassign_partition(partition)
                         reassignment_performed = True
@@ -459,7 +458,7 @@ class StickyAssignmentExecutor:
     def _reassign_partition(self, partition: TopicPartition):
         new_consumer = None
         for another_consumer, _ in self.sorted_current_subscriptions:
-            if partition in self.consumer2all_potential_partitions[another_consumer]:
+            if partition in self.consumer_to_all_potential_partitions[another_consumer]:
                 new_consumer = another_consumer
                 break
         assert new_consumer is not None
