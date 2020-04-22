@@ -582,7 +582,7 @@ class StickyPartitionAssignor(AbstractPartitionAssignor):
     DEFAULT_GENERATION_ID = -1
 
     name = "sticky"
-    version = 1
+    version = 0
 
     member_assignment: List[TopicPartition] = None
     generation: int = DEFAULT_GENERATION_ID
