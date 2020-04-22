@@ -620,6 +620,11 @@ class StickyPartitionAssignor(AbstractPartitionAssignor):
     @classmethod
     def parse_member_metadata(cls, metadata) -> StickyAssignorMemberMetadataV1:
         """
+        Parses member metadata into a python object.
+        This implementation only serializes and deserializes the StickyAssignorMemberMetadataV1 user data,
+        since no StickyAssignor written in Python was deployed ever in the wild with version V0, meaning that
+        there is no need to support backward compatibility with V0.
+
         Arguments:
           metadata (MemberMetadata): decoded metadata for a member of the group.
 
