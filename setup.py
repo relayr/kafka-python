@@ -32,7 +32,7 @@ with open(os.path.join(here, 'README.rst')) as f:
     README = f.read()
 
 setup(
-    name="kafka-python",
+    name="relayr-kafka-python",
     version=__version__,
 
     tests_require=test_require,
