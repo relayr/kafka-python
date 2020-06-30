@@ -74,7 +74,7 @@ class PartitionMovements:
         if reverse_pair not in self.partition_movements_by_topic[partition.topic]:
             return partition
 
-        return self.partition_movements_by_topic[partition.topic][reverse_pair].pop()
+        return next(iter(self.partition_movements_by_topic[partition.topic][reverse_pair]))
 
     def are_sticky(self) -> bool:
         for topic, movements in self.partition_movements_by_topic.items():
